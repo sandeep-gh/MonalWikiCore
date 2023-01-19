@@ -127,3 +127,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+MonalWikiCore/webapp/appish.py

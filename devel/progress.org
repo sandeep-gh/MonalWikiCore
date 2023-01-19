@@ -1,0 +1,11 @@
+* Concepts
+endpoint_name
+* orient here
+** current task
+appish.py has bunch of startup scripts that need to brought live,
+
+
+* Changelong
+** slowly gradually have minimal/barebone url-struct working
+hit the show_root page --> which looks for url of /HOME
+trying to get url_for working f

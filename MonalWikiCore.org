@@ -1,0 +1,25 @@
+* everything about the implementation/design/project/planning/etc.
+
+** draft_version_2
+*** Code layout
+**** runtime.py
+  if there are few instances that gets used throughout the code
+  we keep them in runtime. Not sure what is the benefit of passing
+  them through the function call chain.
+
+
+
+**** Content.py
+very very complicated. 
+
+**** mime.py
+
+**** pysupport.py
+
+
+  
+**** SearchAnalyzers
+
+**** Dummy.py
+Dummy Rev and Item 
+  

@@ -1,0 +1,60 @@
+* Dependencis
+pip3 install --no-dependencies sqlmodel
+
+
+* The gameplan/outline
+
+** using dodo for task management
+cp .env ~/var/data/monalwiki/freshwiki
+
+doit --dir /home/kabira/var/data/monalwiki/freshwiki -f ~/Development/MonalWikiCore/MonalWikiCore/admin/dodo.py
+
+** The login page
+- turn off websockets, use ajax
+- add csrf cookie non-httponly cookie
+- return the cookie with the form
+- authenticate the form
+- add it to a dbstore
+- email-based-verification
+
+** create database/table for adming login/password
+- admin db in
+  BACKEND_DATADIR_BASE/WIKINAME
+-- for testing
+BACKEND_DATADIR_BASE=/home/kabira/var/data/monalwiki/
+WIKINAME = freshwiki
+
+
+
+
+** on table's metadata
+*** column type for password
+For now lets go with LargeBinary/bytea. execellent for datamigration.
+
+**** option 1: use LargeBinary --> bytea on Postgres 
+
+https://stackoverflow.com/questions/27197965/what-type-is-used-to-store-byte-strings-in-sqlalchemy
+  
+
+**** option 2: Use TypeDecorate on String Column ???Que??
+https://stackoverflow.com/questions/27197965/what-type-is-used-to-store-byte-strings-in-sqlalchemy
+
+
+**** option 3: use sqlalchemy_utils passwordType: seems a bit overkill but we can go with it.
+https://sqlalchemy-utils.readthedocs.io/en/latest/_modules/sqlalchemy_utils/types/password.html
+
+
+
+
+*** Field, EmailField,
+Django uses EmailField which provides help_text and verbose_name.
+These come from Django's own ORM which conflicts with sqlalchemy.
+Using SQLModel as it also provides Field and we can build EmailField
+and provide help_text.
+
+* References
+** all auth/user class/files
+./LibOpenSource/starlette-auth-toolkit/tests/apps/example.py:class User(BaseUser, orm.Model):
+./LibOpenSource/starlette-auth-toolkit/tests/apps/orm/models.py:class User(BaseUser, orm.Model):
+
+./LibOpenSource/starlette-core/tests/test_database.py:class User(Base):

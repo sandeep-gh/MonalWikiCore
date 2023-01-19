@@ -1,0 +1,214 @@
+* Step 1: create instance
+make wiki_local
+copies wikiconfig.py
+also logcfg. 
+source ./moin2.0-venv-python3/bin/activate
+moin create-instance --path /tmp/wetfeet
+moin index-create -s -i
+
+* Step 2: index-create -s -i
+two options : -s: create_index, -i: create_storage 
+calls indexingmiddleware.create
+calls get_storage
+for idx in  INDEXES :
+ calls create_index 
+ 
+** get_storage 
+All it does is call FileStorage(index_dir) 
+this is mega stupid code 
+refer to meilesearch-#11
+
+** create_index
+for name in INDEXES:
+   storage.create_index(self.schemas[name], indexname=name)
+            
+
+* new thread on backends, namespacess
+We create a bunch of namespaces: we start with userprofiles, help-common, help-en, users, ''
+
+
+In wikiconfig.py --> create namespace_mapping, backend_mapping
+used by routing.Backend 
+
+
+*** acl input config
+#+BEGIN_SRC python
+  acls = {
+        # maps namespace name -> acl configuration dict for that namespace
+        # most wiki data will be store here
+        NAMESPACE_DEFAULT: dict(before='SuperUser:read,write,create,destroy,admin',
+                                default='All:read,write,create',
+                                after='',
+                                hierarchic=False, ),
+        # user home pages should be stored here
+        NAMESPACE_USERS: dict(before='SuperUser:read,write,create,destroy,admin',
+                              default='All:read,write,create',
+                              after='',
+                              hierarchic=False, ),
+        # contains user data that should be kept secret, allow no access for all
+        NAMESPACE_USERPROFILES: dict(before='All:',
+                                     default='',
+                                     after='',
+                                     hierarchic=False, ),
+        # editor help namespacess are optional
+        'help-common': dict(before='SuperUser:read,write,create,destroy,admin',
+                            default='All:read,write,create,destroy',
+                            after='',
+                            hierarchic=True, ),
+        'help-en': dict(before='SuperUser:read,write,create,destroy,admin',
+                        default='All:read,write,create,destroy',
+                        after='',
+                        hierarchic=False, ),
+    }
+
+  
+#+END_SRC
+
+** create_mapping is called
+using uri, namespaces, backends, acls
+*** uri
+#+BEGIN_SRC 
+stores:fs:/tmp/wetfeet/wiki/data/%(backend)s/%(kind)s
+#+END_SRC
+
+*** how is uri evaluated
+**** for filestore
+%(backend)s is replaced by `one-of-the-namespace`
+for default namespace uri is:
+stores:fs:/tmp/wetfeet/wiki/data/default/%(kind)s
+
+***** call backend_from_uri(uri= stores:fs:/tmp/wetfeet/wiki/data/default/%(kind)s)
+stores corresponds to modules= moin.storage.backends.stores
+call module.mutablebackend.from_uri(fs:/tmp/wetfeet/wiki/data/default/%(kind)s)
+****** in storage.backends.stores.MutableBackend.from_uri
+from uri it gets store_name and store_uri
+for e.g store_name = fs
+uri = /tmp/wetfeet/wiki/data/default/meta
+module = STORES_PACKAGE = 'moin.storage.stores'
+
+meta_store_uri = store_uri % dict(kind='meta')
+data_store_uri = store_uri % dict(kind='data')
+
+for data_store call module.FileStore.from_uri(data_store_uri)
+for meta_store call module.BytesStore.from_uri(meta_store_uri)
+
+uri = /tmp/wetfeet/wiki/data/default/meta
+
+**** for sqlite store
+the uri: 'stores:sqlite:{0}/mywiki_%(backend)s.db::%(kind)s'.format(data_dir)
+***** entry into moin.storage.__init__.py
+in here we find moin.storage.backends.stores based on the first token in uri: the stores 
+`stores:fs:/tmp/wetfeet/wiki/data/%(backend)s/%(kind)s`
+
+****** into moin.storage.backends.stores
+in this we have STORES_PACKAGE=moin.storage.stores
+input uri: sqlite:/tmp/wetfeet/wiki/data/mywiki_default.db::%(kind)
+extract store_name:  fs or sqlite 
+call  moin.storage.stores.fs or moin.storage.stores.sqlite
+with uri stripped out of store name 
+
+
+******* input moin.storage.stores.{fs/sqlite}.from_uri
+******** for stores.sqlite
+- input uri: /tmp/wetfeet/wiki/data/mywiki_default.db::meta
+params: ['/tmp/wetfeet/wiki/data/mywiki_default.db', 'meta']
+db_name= /tmp/wetfeet/wiki/data/mywiki_default.db meta
+table_name=meta
+
+  
+
+  
+** create_mapping: in essance
+for each namespace
+  look at the backend part-- which is stores in the case
+  call stores.Backend.from_uri
+  which calls storage/stores/fs.FileStore
+  for meta and data store 
+  
+
+*** namespace_mapping
+#+BEGIN_SRC bash
+[('userprofiles', 'userprofiles'), 
+ ('help-common', 'help-common'), 
+ ('help-en', 'help-en'), 
+ ('users', 'users'), 
+ ('', 'default')]
+#+END_SRC
+
+*** backend_mapping
+#+BEGIN_SRC bash
+{
+'default': <moin.storage.backends.stores.MutableBackend object at 0x10316d1490>, 
+'users': <moin.storage.backends.stores.MutableBackend object at 0x10316ecbd0>, 
+'userprofiles': <moin.storage.backends.stores.MutableBackend object at 0x10316ecd50>, 
+'help-common': <moin.storage.backends.stores.MutableBackend object at 0x10316eced0>, 
+'help-en': <moin.storage.backends.stores.MutableBackend object at 0x10316ed050>}
+#+END_SRC
+*** acl_mapping
+#+BEGIN_SRC bash
+[
+('userprofiles', {'before': 'All:', 'default': '', 'after': '', 'hierarchic': False}), 
+('help-common', {'before': 'SuperUser:read,write,create,destroy,admin', 'default': 'All:read,write,create,destroy', 'after': '', 'hierarchic': True}), 
+('help-en', {'before': 'SuperUser:read,write,create,destroy,admin', 'default': 'All:read,write,create,destroy', 'after': '', 'hierarchic': False}), 
+('users', {'before': 'SuperUser:read,write,create,destroy,admin', 'default': 'All:read,write,create', 'after': '', 'hierarchic': False}), 
+('', {'before': 'SuperUser:read,write,create,destroy,admin', 'default': 'All:read,write,create', 'after': '', 'hierarchic': False})
+]
+#+END_SRC
+
+
+
+
+
+
+
+** mappings again and their usage
+backends.stores.Backend builds the meta and data store and stores them.
+This Backend instance is kept in backend mapping
+the mapping is send to routing.Backend
+
+*** apis over routing.Backend
+.store()
+.remove
+.retrieve
+.
+we will directly create the mapping in storage_routing.
+in middleware/routing.py/Backend
+.store is called with meta and data
+Backend finds the namespace and
+and calls the storage/stores.Backend
+
+We are merging both in storage_routing
+
+
+
+we will see how to fold in the functionality of backends.stores.Backend and storage.routing.Backend here.
+
+
+
+moin.storage.routing.Backends <-- kahin pe kuch bhi.
+
+meta and data stores are passed to 
+
+app.py:init_backends
+#+BEGIN_SRC
+    app.router = routing.Backend(app.cfg.namespace_mapping, app.cfg.backend_mapping)
+  
+#+END_SRC
+calls 
+ 
+* mielesearch 
+## 1. create a meilesearch db instance
+```
+./meilisearch --db-path ./meilifiles --http-addr '127.0.0.1:7700'
+```
+
+## 2. create indexes (we don't care for schema) 
+make sure to provide primary key 
+
+```
+for name in INDEXES:
+  client.create_index(name, {'primaryKey': 'id'})
+```
+
+
+

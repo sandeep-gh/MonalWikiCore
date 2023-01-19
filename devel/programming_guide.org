@@ -1,0 +1,72 @@
+* Index
+** Create Index
+TBD
+** index query
+indexes.create(**fqcn.query_terms)
+returns IndexQueryAnswer
+** index save
+
+#+BEGIN_SRC python
+  meta = {...
+          'name': ['Home2'],
+          ....
+          }
+  data = b"...}
+
+  content = indexible_content(meta, data)
+  indexes.index_revision(meta, content)
+
+  fqcn = CompositeName(NAMESPACE_DEFAULT, NAME_EXACT, 'Home2')
+
+  whoosh_doc = indexes.document_search(**fqcn.query_terms)
+#+END_SRC 
+
+* Content and contenttypes
+- ./contenttypes.py
+
+defines  contenttypes and its classes 
+NonExistent, Markdown, 
+
+
+** tests:  
+*** engine/
+**** test_indexible_content
+gets indexible plain text for data in Contenttype
+**** test_get_storage_revision
+gets a revision. 
+
+
+*** wiki/
+**** createwikiitem.py
+***** when item is present in index
+
+<class 'MonalWikiCore.wiki.wikiItemTypes.Default'>
+
+
+* GetStorageRevision
+** when called for item theat doesn't exists 
+<class 'MonalWikiCore.engine.Dummy.Rev'>
+revid =  None
+meta = {'itemtype': 'nonexistent', 'contenttype': 'application/x-nonexistent'}
+** when called with item in the store
+class 'MonalWikiCore.engine.indexes.Revision'
+revid =  117893a77a744d56b81dd283d5e2665
+big-thick meta 
+
+
+
+
+* Code structure
+** indexes.py
+*** indexes
+*** get_storage_revision
+*** storageItem_to_whooshDoc
+*** indexible_content
+*** class Revision
+** ./wiki/wikiItemTypes.py
+- class Default <==> ITEMTYPE_DEFAULT
+- class NonExistent <==> ITEMTYPE_
+
+
+
+

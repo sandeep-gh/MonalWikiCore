@@ -1,0 +1,23 @@
+<html>
+<div class="form-style">
+    <input class="input-field-style" type="text" id="username" name="username" placeholder="Username"> <br/>
+    <input class="input-field-style" type="password" id="password" name="password" placeholder="Password"> <br/>
+    <input class="input-field-style" type="password" id="reenterpassword" name="reenterpassword" placeholder="Enter Password again"> <br/>
+    <input type="button" value="Create New Account" onclick="create_account()"/>
+</div>
+
+<script type="text/javascript">
+  function create_account() {
+    event.preventDefault();
+    var username = document.getElementById('username').value;
+    var password = document.getElementById('password').value;
+    var reenterpassword = document.getElementById('reenterpassword').value;
+var xhr = new XMLHttpRequest();
+xhr.open("GET", "/login", true, "san", "que");
+xhr.setRequestHeader("Authorization", "Basic "+btoa(username+':'+password));
+xhr.withCredentials = true;
+xhr.send();
+
+  }
+</script>
+</html>

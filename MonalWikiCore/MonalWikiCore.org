@@ -1,0 +1,289 @@
+* Nuts/Bolts/DataGuide
+** webpage rendering logic 
+***  A wikiItem with itemtype default and contenttype None
+outcome: render a page that gives options for contentype : markdown or csv
+
+*** A wikiItem with itemtype default and contenttype non-none but revid is None
+offer a webpage to fill out the contents
+
+*** A wikiItem with itemtype default and contenttype non-none and not none revid
+render the contents
+
+** The datatypes
+*** WikiItem is abstract type/a tag/
+- Realized types: [NonExistent| Default]
+defined in WikiItem.py/needs_home.py: is create by show/modify items endpoints
+**** NonExistent
+- fields
+  - fqcn
+  - shown #unused for now 
+**** Default 
+- fields
+  - fqcn : A composite name 
+  - rev # A revision (see below)
+  - content # is of type [NonExistent| CSV | Markdown]
+
+    
+*** Revision
+**** fields
+- idxitem
+- revid
+- doc
+- meta
+- name
+
+*** IndexItem
+**** fields
+- name
+- current # the whoosh search result 
+
+
+* tracking Contenttype 
+from wikiItem:
+- wikiItem.content.contenttype
+* Tracking revision and revid
+
+
+* Code Review
+** Data Store
+will store data and meta
+- data is binary blob
+- meta is a json object
+*** sqlite storage is very simple
+simply call connect(filepath) and it wil build/setup the storage backend
+provides set and get item apins 
+
+*** create_storage
+create two tables in one db or two databases (with one table)
+and provides metatbl_manager and datatbl_manager.
+
+- provides store_manager funcinst
+  - store_meta
+    create a revid, serialize meta and store in table via metatbl_manager
+  - store_data
+     create dataid and store dataid, data 
+
+*** storage_routing 
+create storage for each namespace; route meta,data to namespace listed in meta
+
+
+** indexes
+*** IndexItem
+- Name
+- current # this is the current doc that is stored-into/returned-from from Whoosh search   
+*** Revision
+- idxItem
+- revid
+- doc # doc keeps old revision of the item 
+- meta 
+- name #why we need a name         
+*** Meta (a class)
+- revision #revision has meta; meta has revision
+- doc # why meta has doc
+- meta # the meta dict    
+
+  
+*** indexible_content
+from data to content for whoosh-indexing 
+*** storageItem_to_whooshDoc
+a doc/dict that fed to whoosh index
+*** document_search
+search for document with set of key-value pairs 
+*** index_revision
+do the write to whoosh index
+*** retry_document_search_until_succeed
+search for document using key-value search; fail in timedout
+*** store_revision
+store a new revision for a wikiItem 
+
+** wiki
+*** WikiItem
+- fqname
+- rev
+- content
+
+
+* Code Layout
+** MonalWikiCore
+*** MonalWikiCore
+
+**** wikicfg.py
+reads .env and initializes
+- BACKEND_DATADIR_BASE
+- WIKINAME
+- NAMESPACES
+- STORAGETYPE
+- STORAGEARGS
+
+**** constant_keys.py
+All namespace definition, schema attribute names, and other constants
+
+**** system_params.py
+knobs to configure the wiki engine
+**** needs_home.py
+- provides
+  - namespaces
+  - namespace_mapping
+  - fieldnotuniqueerror
+      
+**** utils.py
+- provides:
+  - TrackingFileWrapper:class
+    - memfuncs:
+      - read
+      - size
+      - hash
+        
+**** app_fornow.py
+the entry point for uvicorn
+**** actions.py
+all backend actions
+**** Name
+- provides
+  - split_namespace:func
+    god knows what it does
+  - split_fqname
+    returns CompositeName
+  - CompositeName
+    A tuple of namespace, field, value
+  - get_fqname:
+    return namespaces/item_name_name
+    
+
+**** engine
+***** indexes.py
+- provides
+  - indexes: funcinst
+    - open
+    - document_search
+
+***** IndexItem
+- provides
+  - create: func 
+    - 
+***** IndexSchema.py
+Whoosh indexes use schema. There are two indexes latest revision and all revision.
+They have different schemas. 
+
+***** ACL.py
+keywords/constants related to ACL 
+***** SearchAnalyzers.py
+Not sure what it does
+- provides
+  - MimeTokenizer: Class
+  - AclTokenizer: Class
+  - item_name_analyzer:func
+    
+***** storage.py
+- provides:
+  - create_storage:func 
+    - returns:
+      - store_manager:funcinst
+        - memfuncs:
+          -  store(meta, data)
+            
+
+
+
+***** storage_routing.py
+- provides
+  - storage_routing: funcinst
+    - on-return-has
+      - storage_routing.store(meta, data)
+***** crypto.py
+- provides
+  - make_uuid:func
+        
+**** wiki
+The constructs that make up the wiki:
+schema, Names, functions
+***** Dummy
+provide rev and item, also,  explains their structures.
+***** Revision
+- provides
+  - create: function
+    queries index to find indexItem that match 
+
+**** tests
+***** storage_routing.py
+tests both storage_routing and storage.py
+*** tests
+- .env
+
+
+
+* logic flow
+** starting  from new meta and data for a given item with item_name
+this will happen when user fills out form for new item .
+- your meta will consists of itemtype, contenttype, namespace, tags, summary and etc.
+  - data is converted to  BytesIO
+    - store the meta and data in backend-storage will return the revid
+      - revid = storage_routing.store(meta, data)
+        - create a wikiItem
+              - call indexes.save(wikiItem, meta, data, and storage_revid = revid)
+
+
+
+*** TODO the backend-storage story
+*** create wikiItem story
+- retrieve the current revision from index indexes.get_storage_revision(fqcn, itemtype, contenttype, rev_id, item)
+  - get contenttype from stored revision or from input one
+    - create `placeholder content` object based on contenttype
+      - get itemtype from rev.meta or parameter argument otherwise ITEMTYPE_DEFAULT
+        - create placeholder item get_item
+          - return wikiitem 
+
+**** get_storage_revision story (fqcn:Name.CompositeName, itemtype=None, contenttype=None, rev_id=CURRENT, item:IndexItem=None)
+- if item is none then query the indexes using fqcn to get a wdoc (a whoosh document)
+  - if there is no document/whoosh-index-Entry-item the wdoc.id is None
+    - if wdoc.id is None
+      - create dummy.item(fqcn) and Dummy.rev(item) return rev
+      - else if wdoc exists
+        - create Revision with item and asked rev_id 
+      - return rev 
+    
+*** the indexes
+**** document_search
+- super simple one shot search in the index: returns None  if no matching document is found
+**** create (an indexitem from query)
+- get the name from query
+  - perform document_search using query over whoose index 
+    - if document_search returns none then create a dict and populate with name
+      - return IndexItem(name, latest_doc)
+
+**** save (save a wikiItem with meta and data and other attributes) 
+- create an indexItem from wikiItem.fqcn
+  - set currentrev and contenttype_current from retrieved indexItem
+    - set COMMENT and REV_NUMBER field of meta
+      - something about PARENTID : skip for now
+        - set data from currentrev if data argument is None 
+          - fix encoding
+            - fix data format to Bytes io
+              - create and store a new revision using updated meta, data, storage_revid : store_revision
+
+***** the store_revision story
+- create indexible content from data
+  - update REVID of meta to storage_revid
+    - store the meta, content  pair in index using index_revision
+      - get the whoosh-query-result-doc (wqrd) using retry_document_search_until_succeed using revid
+        - create IndexItem(name, wqrd)
+          - create revision (idxItem, storage_revid)
+            
+              
+***** the index_revision story
+- main point is to use storageItem_to_whooshDoc to convert the meta and content to doc
+  - store this doc in whoosh index
+    
+  
+
+
+
+
+* GamePlan
+- An index page that lists all the items. Has a button for new item
+- when clicked redirects to show_item view function which creates nonexistent item
+- render nonexistent item shows types of item that can be created
+- when selected a url is generated like this: "eknayaitem?itemtype=default&contenttype=text%2Fx-markdown%3Bcharset%3Dutf-8&template="
+- from there its back to show_item   
+
+*   

@@ -1,0 +1,74 @@
+* About
+Starting all over again
+
+* Retracing Steps
+** Create a .env file
+#+BEGIN_SRC
+WIKINAME=freshwiki
+BACKEND_DATADIR_BASE=/home/kabira/var/data/monalwiki/
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=CommaSeparatedStrings)
+
+ALLOWED_HOSTS=127.0.0.1, localhost
+# we assume default namespace mapping to empty path exists
+NAMESPACES=userprofiles, users
+# could be sqlite
+STORAGE_TYPE=sqlite
+# {namespace}_{kind}.db
+
+# this is a tricky argument
+# our namepsace is {BACKEND_DATADIR_BASE}/{WIKINAME}/contentstore/{namespace}/
+# within this either .db or meta.db and data.db 
+STORAGE_ARGS=NMD_storage:db
+
+
+#file storage type arguments
+#STORAGE_TYPE=fs
+
+#+END_SRC
+
+** create storage
+python3 ~/Development/MonalWikiCore/swiff_army_knife/setup_storage.py
+*** calls create_storage from storage.py
+*** builds sqlite tables
+.meta.db, .data.db for namespaces userprofiles, users, default('')
+
+** indexes
+#+BEGIN_SRC python
+index_store = FileStorage(index_dir)
+for name in INDEXES:
+    index_store.create_index(schemas[name], indexname=name)
+#+END_SRC    
+
+
+** start the Monalwiki server
+cp ~/Development/ofjustpy/unit_tests/justpy.env .
+. /home/shared/appenv.sh
+ uvicorn --host 192.168.0.102 --log-level=info --reload  --reload-dir . MonalWikiCore.app_fornow:app
+ 
+
+
+** tests
+*** add item/bytes to storage
+testname: /home/kabira/Development/MonalWikiCore/MonalWikiCore/engine/tests/storage_routing.py
+pick a namespace, gets its storage_manager, put meta in metatbl and data in datatbl;
+*** store meta and data and then retrieve metadata
+/home/kabira/Development/MonalWikiCore/MonalWikiCore/engine/tests/test_meta_data_retrieve.py
+
+
+
+
+
+
+def unfold_pathparams(func):
+    @functools.wraps(func)
+    async def wrapper(request, **kwargs):
+        return await func(request, **request.path_params, **kwargs)
+    return wrapper
+
+
+@unfold_pathparams    
+
+
+* Moin stuff
+UsageConfigDocs/moinmoin.org
+SystemSoftwareArchitectures/

@@ -1,0 +1,9 @@
+* Code Layout
+** wikicfg
+reads .env and initializes
+- BACKEND_DATADIR_BASE
+- WIKINAME
+- NAMESPACES
+- STORAGETYPE
+- STORAGEARGS
+    
